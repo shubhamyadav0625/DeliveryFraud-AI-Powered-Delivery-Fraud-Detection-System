@@ -191,7 +191,8 @@ def seed_demo_users():
     finally:
         db.close()
 
-seed_demo_users()
+if settings.DEMO_MODE:
+    seed_demo_users()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -202,7 +203,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -18,11 +18,12 @@ def register_user(user_in: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User with this email already exists"
         )
+    # Public registration MUST ALWAYS create CUSTOMER role to prevent privilege escalation
     user = User(
         email=user_in.email,
         password_hash=get_password_hash(user_in.password),
         full_name=user_in.full_name,
-        role=user_in.role.value
+        role=UserRole.CUSTOMER.value
     )
     db.add(user)
     db.commit()

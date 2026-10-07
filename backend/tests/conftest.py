@@ -27,6 +27,16 @@ def db_session():
     Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
     try:
+        from app.models.user import User, UserRole
+        from app.core.security import get_password_hash
+        admin = User(
+            email="admin@demo.com",
+            password_hash=get_password_hash("Password123!"),
+            full_name="Demo Fraud Analyst",
+            role=UserRole.ADMIN.value
+        )
+        db.add(admin)
+        db.commit()
         yield db
     finally:
         db.close()

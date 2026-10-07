@@ -1,7 +1,6 @@
 from typing import Dict, Any, List
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from app.models.user import User
 from app.models.order import Order
@@ -9,6 +8,39 @@ from app.models.claim import Claim, ClaimItem, ClaimStatus
 from app.models.delivery import Delivery
 
 class BehaviorAnalyticsService:
+
+    @staticmethod
+    def get_customer_claim_metrics(db: Session, customer_id: str, exclude_claim_id: str | None = None) -> Dict[str, Any]:
+        """Calculates accurate time-window velocity metrics excluding the current claim."""
+        now = datetime.now(timezone.utc)
+        query = db.query(Claim).filter(Claim.customer_id == customer_id)
+        if exclude_claim_id:
+            query = query.filter(Claim.id != exclude_claim_id)
+
+        all_claims = query.all()
+        total_lifetime = len(all_claims)
+
+        def count_window(days: int) -> int:
+            cutoff = now - timedelta(days=days)
+            return sum(
+                1 for c in all_claims 
+                if c.created_at and (
+                    c.created_at.replace(tzinfo=timezone.utc) if c.created_at.tzinfo is None else c.created_at
+                ) >= cutoff
+            )
+
+        approved = sum(1 for c in all_claims if c.status == ClaimStatus.APPROVED.value)
+        rejected = sum(1 for c in all_claims if c.status == ClaimStatus.REJECTED.value)
+
+        return {
+            "lifetime_claims": total_lifetime,
+            "claims_7d": count_window(7),
+            "claims_14d": count_window(14),
+            "claims_30d": count_window(30),
+            "approved_claims": approved,
+            "rejected_claims": rejected,
+            "has_history": total_lifetime > 0
+        }
 
     @staticmethod
     def get_customer_behavior_profile(db: Session, customer_id: str) -> Dict[str, Any]:
@@ -25,8 +57,10 @@ class BehaviorAnalyticsService:
         claims = db.query(Claim).filter(Claim.customer_id == customer_id).all()
         total_claims = len(claims)
 
-        approved_claims = sum(1 for c in claims if c.status == ClaimStatus.APPROVED.value)
-        rejected_claims = sum(1 for c in claims if c.status == ClaimStatus.REJECTED.value)
+        metrics = BehaviorAnalyticsService.get_customer_claim_metrics(db, customer_id)
+
+        approved_claims = metrics["approved_claims"]
+        rejected_claims = metrics["rejected_claims"]
         verify_claims = sum(1 for c in claims if c.status in [ClaimStatus.VERIFY_REQUESTED.value, ClaimStatus.INVESTIGATION_REQUIRED.value, ClaimStatus.MANUAL_REVIEW.value])
 
         total_refunded = sum(c.order.total_amount for c in claims if c.status == ClaimStatus.APPROVED.value and c.order)
@@ -54,10 +88,7 @@ class BehaviorAnalyticsService:
 
         avg_delivery_to_claim_hours = round(sum(timing_hours) / len(timing_hours), 1) if timing_hours else 2.5
 
-        # 14-day velocity
-        fourteen_days_ago = datetime.now(timezone.utc) - timedelta(days=14)
-        recent_claims = [c for c in claims if c.created_at and (c.created_at.replace(tzinfo=timezone.utc) if c.created_at.tzinfo is None else c.created_at) >= fourteen_days_ago]
-        recent_velocity = len(recent_claims)
+        recent_velocity = metrics["claims_14d"]
 
         # High value order claim rate (> $500)
         high_val_orders = [o for o in orders if o.total_amount >= 500.0]
@@ -99,6 +130,8 @@ class BehaviorAnalyticsService:
             "most_common_claim_type": most_common_type,
             "avg_delivery_to_claim_hours": avg_delivery_to_claim_hours,
             "recent_claim_velocity_14d": recent_velocity,
+            "claims_7d": metrics["claims_7d"],
+            "claims_30d": metrics["claims_30d"],
             "high_val_claim_rate_pct": high_val_claim_rate,
             "claim_types_distribution": type_counts,
             "risk_indicators": risk_indicators,
