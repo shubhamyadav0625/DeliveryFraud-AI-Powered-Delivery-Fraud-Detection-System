@@ -167,9 +167,12 @@ export default function AdminDashboard() {
                       <span className="font-bold text-slate-800 text-xs">{claim.claim_number}</span>
                       <div className="flex items-center gap-1">
                         <span className={`px-2 py-0.5 rounded-md font-extrabold text-[10px] ${
-                          score >= 70 ? 'bg-rose-100 text-rose-800 border border-rose-300' : score >= 30 ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          claim.risk_assessment?.risk_level === 'CRITICAL' ? 'bg-purple-100 text-purple-900 border border-purple-300' :
+                          claim.risk_assessment?.risk_level === 'HIGH' ? 'bg-rose-100 text-rose-800 border border-rose-300' :
+                          claim.risk_assessment?.risk_level === 'MEDIUM' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                          'bg-emerald-100 text-emerald-800 border border-emerald-300'
                         }`}>
-                          RISK {score}
+                          {claim.risk_assessment?.risk_level || 'LOW'} ({score}/100)
                         </span>
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
                           CONF {conf}%

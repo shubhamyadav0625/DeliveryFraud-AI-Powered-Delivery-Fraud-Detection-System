@@ -11,6 +11,7 @@ class RiskLevel(str, enum.Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
 
 class RecommendedAction(str, enum.Enum):
     APPROVE = "APPROVE"

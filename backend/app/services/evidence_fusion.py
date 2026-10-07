@@ -280,7 +280,7 @@ class EvidenceFusionEngine:
             risk_level = RiskLevel.HIGH
             recommended_action = RecommendedAction.MANUAL_REVIEW
         else:
-            risk_level = RiskLevel.HIGH
+            risk_level = RiskLevel.CRITICAL
             recommended_action = RecommendedAction.MANUAL_REVIEW
 
         # 4. Dynamic Counterfactual Recalculation
